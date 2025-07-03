@@ -46,7 +46,7 @@ else:
                                                    filter_equal_dict={"status_axon":"non"})[["pt_root_id"]]
     client.version = curr_ver
 prev_unpf_df = client.materialize.tables.nucleus_detection_v0() \
-    .query()[["pt_root_id"]]
+    .query(timestamp=client.materialize.get_version_metadata(prev_ver)["time_stamp"])[["pt_root_id"]]
 prev_unpf_df = prev_unpf_df[~prev_unpf_df["pt_root_id"].isin(prev_proof_df["pt_root_id"])]
 
 # update cell ids of previous version"s dataframe to latest ids
