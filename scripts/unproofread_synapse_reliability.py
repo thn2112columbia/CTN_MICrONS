@@ -30,20 +30,24 @@ type_df = client.materialize.tables.aibs_metamodel_mtypes_v661_v2() \
                            "aibs_metamodel_mtypes_v661_v2": ["cell_type"]})
 type_df.drop_duplicates(subset="pt_root_id", inplace=True)
 
-# load previous and current dataframes of cell ids with proofread axons
+# load previous and current dataframes of cell ids with unproofread axons
 curr_proof_df = client.materialize.tables.proofreading_status_and_strategy(status_axon="t") \
-    .query(select_columns=["pt_root_id","strategy_axon"])
-if prev_ver >= 1300:
+    .query()[["pt_root_id"]]
+curr_unpf_df = client.materialize.tables.nucleus_detection_v0() \
+    .query()[["pt_root_id"]]
+curr_unpf_df = curr_unpf_df[~curr_unpf_df["pt_root_id"].isin(curr_proof_df["pt_root_id"])]
+if prev_ver >= 1181:
     prev_proof_df = client.materialize.tables.proofreading_status_and_strategy(status_axon="t") \
-        .query(timestamp=client.materialize.get_version_metadata(prev_ver)["time_stamp"],
-            select_columns=["pt_root_id","strategy_axon"])
+        .query(timestamp=client.materialize.get_version_metadata(prev_ver)["time_stamp"]) \
+            [["pt_root_id"]]
 else:
     client.version = prev_ver
     prev_proof_df = client.materialize.query_table('proofreading_status_public_release',
-                                                   filter_in_dict={"status_axon":["clean","extended"]},
-                                                   select_columns=["pt_root_id","status_axon"]) \
-        .rename(columns={"status_axon": "strategy_axon"})
+                                                   filter_equal_dict={"status_axon":"non"})[["pt_root_id"]]
     client.version = curr_ver
+prev_unpf_df = client.materialize.tables.nucleus_detection_v0() \
+    .query()[["pt_root_id"]]
+prev_unpf_df = prev_unpf_df[~prev_unpf_df["pt_root_id"].isin(prev_proof_df["pt_root_id"])]
 
 # update cell ids of previous version"s dataframe to latest ids
 start = time.process_time()
@@ -59,18 +63,8 @@ prev_proof_df["pt_root_id"] = prev_proof_df["pt_root_id"].replace(update_dict)
 
 print(f"Time taken to update previous proofread dataframe: {time.process_time() - start} seconds")
 
-# find shared cell ids between current and previous proofread dataframes with same axon proofreading
+# find shared cell ids between current and previous unproofread dataframes
 shared_proof_df = curr_proof_df.merge(prev_proof_df, on="pt_root_id", suffixes=("_curr","_prev"))
-if prev_ver >= 1181:
-    shared_proof_df = shared_proof_df[shared_proof_df["strategy_axon_curr"] == shared_proof_df["strategy_axon_prev"]]
-else:
-    shared_proof_df["strategy_axon_extended_curr"] = shared_proof_df["strategy_axon_curr"] \
-        .str.contains("extended", case=False)
-    shared_proof_df["strategy_axon_extended_prev"] = shared_proof_df["strategy_axon_prev"] == "extended"
-    shared_proof_df = shared_proof_df[
-        shared_proof_df["strategy_axon_extended_curr"] == shared_proof_df["strategy_axon_extended_prev"]]
-shared_proof_df["strategy_axon"] = shared_proof_df["strategy_axon_curr"]
-shared_proof_df = shared_proof_df.drop(columns=["strategy_axon_curr","strategy_axon_prev"])
 
 # add cell type and column information to shared dataframe
 shared_proof_df = shared_proof_df.merge(type_df, on="pt_root_id", how="left")
@@ -120,4 +114,4 @@ samp_proof_df["curr_num_syn"] = curr_num_syn
 samp_proof_df["prev_num_syn"] = prev_num_syn
 samp_proof_df["shared_syns"] = shared_syns
 
-samp_proof_df.to_csv(f"./results/syn_rel_prev_ver={prev_ver}_num_samp={num_samp}_seed={seed}.csv", index=False)
+samp_proof_df.to_csv(f"./results/unpf_syn_rel_prev_ver={prev_ver}_num_samp={num_samp}_seed={seed}.csv", index=False)
