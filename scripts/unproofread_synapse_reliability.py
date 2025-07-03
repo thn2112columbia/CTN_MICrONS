@@ -1,3 +1,4 @@
+import pickle
 import time
 from tqdm import tqdm
 import argparse
@@ -9,11 +10,13 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--curr_ver", "-c", help="current materialization version to compare to",type=int, default=1412)
 parser.add_argument("--prev_ver", "-p", help="previous materialization version to compare to",type=int, default=1412)
 parser.add_argument("--num_samp", "-n", help="number of presynaptic cells to sample",type=int, default=100)
+parser.add_argument("--num_updt", "-nu", help="number of cell ids to update",type=int, default=2000)
 parser.add_argument("--seed", "-s", help="RNG seed",type=int, default=0)
 args = vars(parser.parse_args())
 curr_ver = int(args["curr_ver"])
 prev_ver = int(args["prev_ver"])
 num_samp = int(args["num_samp"])
+num_updt = int(args["num_updt"])
 seed = int(args["seed"])
 
 client = CAVEclient("minnie65_public")
@@ -52,16 +55,26 @@ prev_unpf_df = prev_unpf_df[~prev_unpf_df["pt_root_id"].isin(prev_proof_df["pt_r
 # update cell ids of previous version"s dataframe to latest ids
 start = time.process_time()
 
-prev_root_ids = prev_unpf_df["pt_root_id"].values
-expired_ids = prev_root_ids[~client.chunkedgraph.is_latest_roots(prev_root_ids)]
-updated_ids = np.zeros_like(expired_ids)
-print(f"Updating {len(expired_ids)} cell ids to latest roots...")
-for i,root_id in tqdm(enumerate(expired_ids)):
-    try:
-        updated_ids[i] = client.chunkedgraph.suggest_latest_roots(root_id)
-    except:
-        updated_ids[i] = 0  # If the root ID is not found, set to 0
-update_dict = dict(zip(expired_ids, updated_ids))
+try:
+    with open(f"./results/id_update_dict_unpf_prev_ver={prev_ver}_num_updt={num_updt}.pkl", "rb") as f:
+        update_dict = pickle.load(f)
+except:
+    prev_root_ids = prev_unpf_df["pt_root_id"].values
+    expired_ids = prev_root_ids[~client.chunkedgraph.is_latest_roots(prev_root_ids)]
+    
+    rng = np.random.default_rng(0)
+    expired_ids = rng.choice(expired_ids, size=min(num_updt, len(expired_ids)), replace=False)
+    
+    updated_ids = np.zeros_like(expired_ids)
+    print(f"Updating {len(expired_ids)} cell ids to latest roots...")
+    for i,root_id in tqdm(enumerate(expired_ids)):
+        try:
+            updated_ids[i] = client.chunkedgraph.suggest_latest_roots(root_id)
+        except:
+            updated_ids[i] = 0  # If the root ID is not found, set to 0
+    update_dict = dict(zip(expired_ids, updated_ids))
+    with open(f"./results/id_update_dict_unpf_prev_ver={prev_ver}_num_updt={num_updt}.pkl", "wb") as f:
+        pickle.dump(update_dict, f)
 prev_unpf_df["pt_root_id"] = prev_unpf_df["pt_root_id"].replace(update_dict)
 
 print(f"Time taken to update previous unproofread dataframe: {time.process_time() - start} seconds")
