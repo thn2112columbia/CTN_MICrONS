@@ -89,10 +89,11 @@ shared_unpf_df["in_column"] = shared_unpf_df["pt_root_id"].isin(column_df["pt_ro
 # sample presynaptic cells, and compare synapses identities between current and previous versions
 def get_synapses(pre_id):
     curr_out_syn_df = client.materialize.synapse_query(pre_ids=pre_id,remove_autapses=True)
-    if client.chunkedgraph.is_latest_roots(pre_id,timestamp=client.materialize.get_timestamp(prev_ver)):
+    # if client.chunkedgraph.is_latest_roots(pre_id,timestamp=client.materialize.get_timestamp(prev_ver)):
+    try:
         prev_out_syn_df = client.materialize.synapse_query(pre_ids=pre_id,remove_autapses=True,
                                                            materialization_version=prev_ver)
-    else:
+    except:
         prev_out_syn_df = client.materialize.synapse_query(pre_ids=client.chunkedgraph.suggest_latest_roots(pre_id,
                                                            timestamp=client.materialize.get_timestamp(prev_ver)),
                                                            remove_autapses=True, materialization_version=prev_ver)
@@ -119,12 +120,19 @@ rng = np.random.default_rng(0)
 start = time.process_time()
 
 idxs = rng.choice(len(shared_unpf_df), size=num_samp, replace=False)
-for i,idx in enumerate(idxs):
-    print(f"Processing index {i+1}/{num_samp}...")
-    curr_post_ids, prev_post_ids = get_synapses(shared_unpf_df["pt_root_id"].values[idx])
-    curr_num_syn[i] = len(curr_post_ids)
-    prev_num_syn[i] = len(prev_post_ids)
-    shared_syns[i] = curr_post_ids.isin(prev_post_ids).sum()
+n_done = 0
+i = 0
+while n_done < num_samp:
+    print(f"Processing index {n_done+1}/{num_samp}...")
+    try:
+        curr_post_ids, prev_post_ids = get_synapses(shared_unpf_df["pt_root_id"].values[idxs[i]])
+        curr_num_syn[n_done] = len(curr_post_ids)
+        prev_num_syn[n_done] = len(prev_post_ids)
+        shared_syns[n_done] = curr_post_ids.isin(prev_post_ids).sum()
+        n_done += 1
+    except:
+        pass
+    i += 1
     
 print(f"Time taken to process synapses: {time.process_time() - start} seconds")
     
