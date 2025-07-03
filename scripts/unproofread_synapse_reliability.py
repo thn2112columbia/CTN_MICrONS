@@ -39,7 +39,7 @@ curr_proof_df = client.materialize.tables.proofreading_status_and_strategy(statu
 curr_unpf_df = client.materialize.tables.nucleus_detection_v0() \
     .query()[["pt_root_id"]]
 curr_unpf_df = curr_unpf_df[~curr_unpf_df["pt_root_id"].isin(curr_proof_df["pt_root_id"])]
-if prev_ver >= 1181:
+if prev_ver >= 1078:
     prev_proof_df = client.materialize.tables.proofreading_status_and_strategy(status_axon="t") \
         .query(timestamp=client.materialize.get_version_metadata(prev_ver)["time_stamp"]) \
             [["pt_root_id"]]

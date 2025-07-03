@@ -33,7 +33,7 @@ type_df.drop_duplicates(subset="pt_root_id", inplace=True)
 # load previous and current dataframes of cell ids with proofread axons
 curr_proof_df = client.materialize.tables.proofreading_status_and_strategy(status_axon="t") \
     .query(select_columns=["pt_root_id","strategy_axon"])
-if prev_ver >= 1300:
+if prev_ver >= 1078:
     prev_proof_df = client.materialize.tables.proofreading_status_and_strategy(status_axon="t") \
         .query(timestamp=client.materialize.get_version_metadata(prev_ver)["time_stamp"],
             select_columns=["pt_root_id","strategy_axon"])
@@ -64,7 +64,7 @@ print(f"Time taken to update previous proofread dataframe: {time.process_time() 
 
 # find shared cell ids between current and previous proofread dataframes with same axon proofreading
 shared_proof_df = curr_proof_df.merge(prev_proof_df, on="pt_root_id", suffixes=("_curr","_prev"))
-if prev_ver >= 1181:
+if prev_ver >= 1078:
     shared_proof_df = shared_proof_df[shared_proof_df["strategy_axon_curr"] == shared_proof_df["strategy_axon_prev"]]
 else:
     shared_proof_df["strategy_axon_extended_curr"] = shared_proof_df["strategy_axon_curr"] \
