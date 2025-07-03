@@ -33,9 +33,16 @@ type_df.drop_duplicates(subset="pt_root_id", inplace=True)
 # load previous and current dataframes of cell ids with proofread axons
 curr_proof_df = client.materialize.tables.proofreading_status_and_strategy(status_axon="t") \
     .query(select_columns=["pt_root_id","strategy_axon"])
-prev_proof_df = client.materialize.tables.proofreading_status_and_strategy(status_axon="t") \
-    .query(timestamp=client.materialize.get_version_metadata(prev_ver)["time_stamp"],
-           select_columns=["pt_root_id","strategy_axon"])
+if prev_ver >= 1300:
+    prev_proof_df = client.materialize.tables.proofreading_status_and_strategy(status_axon="t") \
+        .query(timestamp=client.materialize.get_version_metadata(prev_ver)["time_stamp"],
+            select_columns=["pt_root_id","strategy_axon"])
+else:
+    client.version = prev_ver
+    prev_proof_df = client.materialize.query_table('proofreading_status_public_release',
+                                                   filter_in_dict={"status_axon":["clean","extended"]},
+                                                   select_columns=["pt_root_id","status_axon"]) \
+        .rename(columns={"status_axon": "strategy_axon"})
 
 # update cell ids of previous version"s dataframe to latest ids
 start = time.process_time()
@@ -52,7 +59,15 @@ print(f"Time taken to update previous proofread dataframe: {time.process_time() 
 
 # find shared cell ids between current and previous proofread dataframes with same axon proofreading
 shared_proof_df = curr_proof_df.merge(prev_proof_df, on="pt_root_id", suffixes=("_curr","_prev"))
-shared_proof_df = shared_proof_df[shared_proof_df["strategy_axon_curr"] == shared_proof_df["strategy_axon_prev"]]
+if prev_ver >= 1300:
+    shared_proof_df = shared_proof_df[shared_proof_df["strategy_axon_curr"] == shared_proof_df["strategy_axon_prev"]]
+else:
+    shared_proof_df["strategy_axon_extended_curr"] = shared_proof_df["strategy_axon_curr"] \
+        .str.contains("extended", case=False)
+    shared_proof_df["strategy_axon_extended_prev"] = shared_proof_df["strategy_axon_prev"] == "extended"
+    print(shared_proof_df)
+    shared_proof_df = shared_proof_df[
+        shared_proof_df["strategy_axon_extended_curr"] == shared_proof_df["strategy_axon_extended_prev"]]
 shared_proof_df["strategy_axon"] = shared_proof_df["strategy_axon_curr"]
 shared_proof_df = shared_proof_df.drop(columns=["strategy_axon_curr","strategy_axon_prev"])
 
