@@ -30,12 +30,12 @@ def runjobs():
     user = os.environ["USER"]
 
     if cluster=='burg':
-        path_2_package="/burg/theory/users/"+user+"/CTN_MICRONS/scripts"
+        path_2_package="/burg/theory/users/"+user+"/CTN_MICrONS/scripts"
         ofilesdir = path_2_package + "/Ofiles/"
         resultsdir = path_2_package + "/results/"
         
     elif cluster=='axon':
-        path_2_package="/home/"+user+"/CTN_MICRONS/scripts"
+        path_2_package="/home/"+user+"/CTN_MICrONS/scripts"
         ofilesdir = path_2_package + "/Ofiles/"
         resultsdir = path_2_package + "/results/"
 
@@ -47,7 +47,7 @@ def runjobs():
 
     time.sleep(0.2)
     
-    prev_vers = [1300,943,661,343,117]
+    prev_vers = [1300,1181,1078]
 
     for prev_ver in prev_vers:
         #--------------------------------------------------------------------------
