@@ -43,6 +43,7 @@ else:
                                                    filter_in_dict={"status_axon":["clean","extended"]},
                                                    select_columns=["pt_root_id","status_axon"]) \
         .rename(columns={"status_axon": "strategy_axon"})
+    client.version = curr_ver
 
 # update cell ids of previous version"s dataframe to latest ids
 start = time.process_time()
