@@ -53,7 +53,10 @@ expired_ids = prev_root_ids[~client.chunkedgraph.is_latest_roots(prev_root_ids)]
 updated_ids = np.zeros_like(expired_ids)
 print(f"Updating {len(expired_ids)} cell ids to latest roots...")
 for i,root_id in tqdm(enumerate(expired_ids)):
-    updated_ids[i] = client.chunkedgraph.suggest_latest_roots(root_id)
+    try:
+        updated_ids[i] = client.chunkedgraph.suggest_latest_roots(root_id)
+    except:
+        updated_ids[i] = 0  # If the root ID is not found, set to 0
 update_dict = dict(zip(expired_ids, updated_ids))
 prev_proof_df["pt_root_id"] = prev_proof_df["pt_root_id"].replace(update_dict)
 
@@ -91,7 +94,10 @@ def get_synapses(pre_id):
     updated_ids = np.zeros_like(expired_ids)
     print(f"Updating {len(expired_ids)} post synaptic ids to latest roots...")
     for i,id in tqdm(enumerate(expired_ids)):
-        updated_ids[i] = client.chunkedgraph.suggest_latest_roots(id)
+        try:
+            updated_ids[i] = client.chunkedgraph.suggest_latest_roots(id)
+        except:
+            updated_ids[i] = 0  # If the root ID is not found, set to 0
     update_dict = dict(zip(expired_ids, updated_ids))
     prev_out_syn_df["post_pt_root_id"] = prev_out_syn_df["post_pt_root_id"].replace(update_dict)
     
