@@ -52,7 +52,7 @@ prev_unpf_df = prev_unpf_df[~prev_unpf_df["pt_root_id"].isin(prev_proof_df["pt_r
 # update cell ids of previous version"s dataframe to latest ids
 start = time.process_time()
 
-prev_root_ids = prev_proof_df["pt_root_id"].values
+prev_root_ids = prev_unpf_df["pt_root_id"].values
 expired_ids = prev_root_ids[~client.chunkedgraph.is_latest_roots(prev_root_ids)]
 updated_ids = np.zeros_like(expired_ids)
 print(f"Updating {len(expired_ids)} cell ids to latest roots...")
@@ -62,16 +62,16 @@ for i,root_id in tqdm(enumerate(expired_ids)):
     except:
         updated_ids[i] = 0  # If the root ID is not found, set to 0
 update_dict = dict(zip(expired_ids, updated_ids))
-prev_proof_df["pt_root_id"] = prev_proof_df["pt_root_id"].replace(update_dict)
+prev_unpf_df["pt_root_id"] = prev_unpf_df["pt_root_id"].replace(update_dict)
 
-print(f"Time taken to update previous proofread dataframe: {time.process_time() - start} seconds")
+print(f"Time taken to update previous unproofread dataframe: {time.process_time() - start} seconds")
 
 # find shared cell ids between current and previous unproofread dataframes
-shared_proof_df = curr_proof_df.merge(prev_proof_df, on="pt_root_id", suffixes=("_curr","_prev"))
+shared_unpf_df = curr_unpf_df.merge(prev_unpf_df, on="pt_root_id", suffixes=("_curr","_prev"))
 
 # add cell type and column information to shared dataframe
-shared_proof_df = shared_proof_df.merge(type_df, on="pt_root_id", how="left")
-shared_proof_df["in_column"] = shared_proof_df["pt_root_id"].isin(column_df["pt_root_id"])
+shared_unpf_df = shared_unpf_df.merge(type_df, on="pt_root_id", how="left")
+shared_unpf_df["in_column"] = shared_unpf_df["pt_root_id"].isin(column_df["pt_root_id"])
 
 # sample presynaptic cells, and compare synapses identities between current and previous versions
 def get_synapses(pre_id):
@@ -105,19 +105,19 @@ rng = np.random.default_rng(0)
 
 start = time.process_time()
 
-idxs = rng.choice(len(shared_proof_df), size=num_samp, replace=False)
+idxs = rng.choice(len(shared_unpf_df), size=num_samp, replace=False)
 for i,idx in enumerate(idxs):
     print(f"Processing index {i+1}/{num_samp}...")
-    curr_post_ids, prev_post_ids = get_synapses(shared_proof_df["pt_root_id"].values[idx])
+    curr_post_ids, prev_post_ids = get_synapses(shared_unpf_df["pt_root_id"].values[idx])
     curr_num_syn[i] = len(curr_post_ids)
     prev_num_syn[i] = len(prev_post_ids)
     shared_syns[i] = curr_post_ids.isin(prev_post_ids).sum()
     
 print(f"Time taken to process synapses: {time.process_time() - start} seconds")
     
-samp_proof_df = shared_proof_df.iloc[idxs]
-samp_proof_df["curr_num_syn"] = curr_num_syn
-samp_proof_df["prev_num_syn"] = prev_num_syn
-samp_proof_df["shared_syns"] = shared_syns
+samp_unpf_df = shared_unpf_df.iloc[idxs]
+samp_unpf_df["curr_num_syn"] = curr_num_syn
+samp_unpf_df["prev_num_syn"] = prev_num_syn
+samp_unpf_df["shared_syns"] = shared_syns
 
-samp_proof_df.to_csv(f"./results/unpf_syn_rel_prev_ver={prev_ver}_num_samp={num_samp}_seed={seed}.csv", index=False)
+samp_unpf_df.to_csv(f"./results/unpf_syn_rel_prev_ver={prev_ver}_num_samp={num_samp}_seed={seed}.csv", index=False)
