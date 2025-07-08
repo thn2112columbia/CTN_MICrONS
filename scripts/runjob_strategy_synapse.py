@@ -51,7 +51,7 @@ def runjobs():
     
     #--------------------------------------------------------------------------
     # Make SBTACH
-    inpath = currwd + "/strategy_axon.py"
+    inpath = currwd + "/strategy_synapse.py"
     jobprms = f"{inpath}  -v {ver} -n {unpf_samp} -s {seed}"
     jobname = f"pf_strat_v={ver}_n={unpf_samp}_s={seed}"
 
